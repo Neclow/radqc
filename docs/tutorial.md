@@ -106,3 +106,7 @@ Each save rewrites the file atomically (temp file + rename), so an interrupted s
 
 !!! tip "Sharing or analysing the output"
     The YAML file is plain text and self-describing. It can be opened in any text editor, parsed by any YAML library (`pyyaml` in Python, `serde_yaml` in Rust, `js-yaml` in JavaScript, etc.), or shared with collaborators alongside the image folder.
+
+---
+
+*Chest X-ray shown in the screenshots: [*Normal posteroanterior (PA) chest radiograph*](https://commons.wikimedia.org/wiki/File:Normal_posteroanterior_(PA)_chest_radiograph_(X-ray).jpg) (CC0 / public domain), via Wikimedia Commons.*
