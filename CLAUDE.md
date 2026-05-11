@@ -1,33 +1,28 @@
 # RadQC
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository. If you need more info, have a look at `starter_kit/`.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Overview
 
-RadQC is a **greenfield** standalone manual QC annotation tool for radiology images, built as a Tauri 2 app (Rust shell + SvelteKit/TypeScript frontend) producing native per-platform installers.
+RadQC is a standalone manual quality-control (QC) annotation tool for radiology images, built as a Tauri 2 app (Rust shell + SvelteKit/TypeScript frontend) producing native per-platform installers.
 
-**Why standalone**: external (ETHZ-side) radiologists need to QC the parent project's X-ray dataset but can't get a KU VPN, SIF is data-only, and hosting sensitive data on a non-secure KU server is a GDPR non-starter. The unlock is to **decouple the tool from the data** — ship a generic app the user points at their own image directory at runtime. Data residency becomes the user's institution's problem.
-
-The `starter_kit/` directory holds reference material from the parent research project (`qc_image.py` original Streamlit script, `qc_tool_spinoff.md` rationale doc). Treat it as reference only — specific tech choices (Streamlit, SQLite, manifest CSV) are superseded; only the rationale around data-decoupling, GDPR, and binary size still applies.
+The application is decoupled from the data: the user picks an image folder at runtime. No bundled data, no PHI assumptions, no project-specific schema. Annotations are persisted to a YAML file on disk and never leave the user's machine.
 
 ## Main objectives
 
-1. **Tauri (Rust + SvelteKit/TS)**, not Streamlit. Tiny binaries (~5–15 MB installers), native feel, cross-platform, double-click distribution.
-2. **Runtime-decoupled inputs**: reviewer ID, project name, image folder (PNG and JPEG for v1), output folder picked via native dialogs. No manifest CSV, no bundled data, no PHI assumptions, no project-specific schema.
-3. **Per-image annotation**: Minor / Major flag + free-text Reason. Skip-able. Image identity = path relative to image folder. The starter-kit doc proposed a checkbox-list taxonomy (penetration / rotation / motion / clipping / lateral-AP-mislabel / foreign object / processing artifact / other); v1 uses free-text Reason instead.
+1. **Tauri (Rust + SvelteKit/TS)**. Tiny binaries (~5–15 MB installers), native feel, cross-platform, double-click distribution.
+2. **Runtime-decoupled inputs**: reviewer ID, project name, image folder (PNG and JPEG for v1), output folder picked via native dialogs. No manifest CSV.
+3. **Per-image annotation**: Minor / Major flag + free-text Reason. Skip-able. Image identity = path relative to the image folder.
 4. **YAML output** at `{output_folder}/{project}_{reviewer}.radqc.yaml` with top-level `radqc: <version>` marker, plus `reviewer`, `project`, `image_dir`, and `annotations` (map keyed by relative path). Latest-wins on re-annotation; no history kept; atomic writes (temp file + rename).
-5. **Open-sourceable** under Apache-2.0. No references to internal paths or datasets in the codebase.
+5. **Open-source** under Apache-2.0.
 
-**The "non-reason"**: the spin-off is justified by binary size, distribution polish, and publishability — *not* "reusability across other projects." Don't design speculative abstractions for hypothetical reuse.
-
-**Naming convention**:
+## Naming convention
 
 - `radqc` (lowercase) — package name in `Cargo.toml`, `package.json`, GitHub repo URL.
 - `RadQC` (mixed case) — display name in window title, headings, app metadata.
-- `tb-annotator/` — local working directory; intentional mismatch with the project name (don't rename).
 - `io.github.neclow.radqc` — Tauri bundle identifier.
 
-Don't globally `s/radqc/RadQC/`; the lowercase form is load-bearing in package metadata.
+Don't globally `s/radqc/RadQC/` — the lowercase form is load-bearing in package metadata.
 
 ## Commands
 
