@@ -954,8 +954,7 @@
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
-    max-width: 880px;
-    margin: 2.5rem auto 0;
+    margin: 1.5rem 0 0;
   }
 
   .landing-cards {
@@ -1641,7 +1640,7 @@
   }
 
   .footer {
-    margin-top: 1.5rem;
+    margin-top: 0.5rem;
     padding-top: 1rem;
     border-top: 1px solid var(--border);
     font-size: 0.75rem;
