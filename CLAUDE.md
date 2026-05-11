@@ -13,7 +13,7 @@ The `starter_kit/` directory holds reference material from the parent research p
 ## Main objectives
 
 1. **Tauri (Rust + SvelteKit/TS)**, not Streamlit. Tiny binaries (~5–15 MB installers), native feel, cross-platform, double-click distribution.
-2. **Runtime-decoupled inputs**: reviewer ID, project name, image folder (PNG only for v1), output folder picked via native dialogs. No manifest CSV, no bundled data, no PHI assumptions, no project-specific schema.
+2. **Runtime-decoupled inputs**: reviewer ID, project name, image folder (PNG and JPEG for v1), output folder picked via native dialogs. No manifest CSV, no bundled data, no PHI assumptions, no project-specific schema.
 3. **Per-image annotation**: Minor / Major flag + free-text Reason. Skip-able. Image identity = path relative to image folder. The starter-kit doc proposed a checkbox-list taxonomy (penetration / rotation / motion / clipping / lateral-AP-mislabel / foreign object / processing artifact / other); v1 uses free-text Reason instead.
 4. **YAML output** at `{output_folder}/{project}_{reviewer}.radqc.yaml` with top-level `radqc: <version>` marker, plus `reviewer`, `project`, `image_dir`, and `annotations` (map keyed by relative path). Latest-wins on re-annotation; no history kept; atomic writes (temp file + rename).
 5. **Open-sourceable** under Apache-2.0. No references to internal paths or datasets in the codebase.
