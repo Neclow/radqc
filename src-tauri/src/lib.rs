@@ -111,3 +111,249 @@ pub fn run() {
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::path::Path;
+    use tempfile::tempdir;
+
+    fn touch(path: &Path) {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).unwrap();
+        }
+        fs::write(path, b"").unwrap();
+    }
+
+    fn s(p: &Path) -> String {
+        p.to_string_lossy().to_string()
+    }
+
+    // --- list_pngs ---
+
+    #[test]
+    fn list_pngs_empty_folder_is_empty() {
+        let dir = tempdir().unwrap();
+        let result = list_pngs(s(dir.path())).unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn list_pngs_finds_pngs_at_root() {
+        let dir = tempdir().unwrap();
+        touch(&dir.path().join("a.png"));
+        touch(&dir.path().join("b.png"));
+        let result = list_pngs(s(dir.path())).unwrap();
+        assert_eq!(result, vec!["a.png", "b.png"]);
+    }
+
+    #[test]
+    fn list_pngs_recursive() {
+        let dir = tempdir().unwrap();
+        touch(&dir.path().join("a.png"));
+        touch(&dir.path().join("sub/b.png"));
+        touch(&dir.path().join("sub/deeper/c.png"));
+        let result = list_pngs(s(dir.path())).unwrap();
+        assert_eq!(result, vec!["a.png", "sub/b.png", "sub/deeper/c.png"]);
+    }
+
+    #[test]
+    fn list_pngs_filters_non_png_files() {
+        let dir = tempdir().unwrap();
+        touch(&dir.path().join("a.png"));
+        touch(&dir.path().join("b.jpg"));
+        touch(&dir.path().join("c.txt"));
+        touch(&dir.path().join("d.csv"));
+        let result = list_pngs(s(dir.path())).unwrap();
+        assert_eq!(result, vec!["a.png"]);
+    }
+
+    #[test]
+    fn list_pngs_extension_is_case_insensitive() {
+        let dir = tempdir().unwrap();
+        touch(&dir.path().join("a.png"));
+        touch(&dir.path().join("b.PNG"));
+        touch(&dir.path().join("c.Png"));
+        let result = list_pngs(s(dir.path())).unwrap();
+        assert_eq!(result, vec!["a.png", "b.PNG", "c.Png"]);
+    }
+
+    #[test]
+    fn list_pngs_errors_on_non_directory() {
+        let dir = tempdir().unwrap();
+        let file = dir.path().join("not-a-dir");
+        fs::write(&file, b"").unwrap();
+        let result = list_pngs(s(&file));
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("not a directory"));
+    }
+
+    // --- read_project ---
+
+    #[test]
+    fn read_project_returns_none_for_missing_file() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("nope.yaml");
+        let result = read_project(s(&path)).unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn read_project_parses_valid_yaml() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("p.yaml");
+        fs::write(
+            &path,
+            "radqc: 0.1.0\nreviewer: neil\nproject: default\nimage_dir: /tmp/imgs\nannotations:\n  a.png:\n    severity: minor\n    reason: rotation\n",
+        )
+        .unwrap();
+        let project = read_project(s(&path)).unwrap().unwrap();
+        assert_eq!(project.radqc, "0.1.0");
+        assert_eq!(project.reviewer, "neil");
+        assert_eq!(project.project, "default");
+        assert_eq!(project.image_dir, "/tmp/imgs");
+        assert_eq!(project.annotations.len(), 1);
+        assert_eq!(project.annotations["a.png"].severity, "minor");
+        assert_eq!(project.annotations["a.png"].reason, "rotation");
+    }
+
+    #[test]
+    fn read_project_errors_on_missing_required_field() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("p.yaml");
+        // No radqc field — serde rejects.
+        fs::write(
+            &path,
+            "reviewer: neil\nproject: default\nimage_dir: /tmp\nannotations: {}\n",
+        )
+        .unwrap();
+        let result = read_project(s(&path));
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("parse failed"));
+    }
+
+    #[test]
+    fn read_project_errors_on_empty_radqc_marker() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("p.yaml");
+        fs::write(
+            &path,
+            "radqc: \"\"\nreviewer: neil\nproject: default\nimage_dir: /tmp\nannotations: {}\n",
+        )
+        .unwrap();
+        let result = read_project(s(&path));
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("not a RadQC file"));
+    }
+
+    #[test]
+    fn read_project_errors_on_malformed_yaml() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("p.yaml");
+        fs::write(&path, "foo: [unclosed\n").unwrap();
+        let result = read_project(s(&path));
+        assert!(result.is_err());
+    }
+
+    // --- save_project ---
+
+    #[test]
+    fn save_project_writes_file_with_marker() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("p.yaml");
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "a.png".to_string(),
+            Annotation {
+                severity: "minor".to_string(),
+                reason: "rotation".to_string(),
+            },
+        );
+        save_project(
+            s(&path),
+            "neil".to_string(),
+            "default".to_string(),
+            "/tmp/imgs".to_string(),
+            annotations,
+        )
+        .unwrap();
+        assert!(path.exists());
+        let contents = fs::read_to_string(&path).unwrap();
+        assert!(contents.contains("radqc:"));
+        assert!(contents.contains("neil"));
+        assert!(contents.contains("a.png"));
+    }
+
+    #[test]
+    fn save_project_creates_parent_directories() {
+        let dir = tempdir().unwrap();
+        let nested = dir.path().join("a/b/c/p.yaml");
+        save_project(
+            s(&nested),
+            "neil".to_string(),
+            "default".to_string(),
+            "/tmp".to_string(),
+            BTreeMap::new(),
+        )
+        .unwrap();
+        assert!(nested.exists());
+    }
+
+    #[test]
+    fn save_project_leaves_no_temp_file_on_success() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("p.yaml");
+        save_project(
+            s(&path),
+            "neil".to_string(),
+            "default".to_string(),
+            "/tmp".to_string(),
+            BTreeMap::new(),
+        )
+        .unwrap();
+        let tmp = path.with_extension("yaml.tmp");
+        assert!(!tmp.exists());
+    }
+
+    // --- round-trip ---
+
+    #[test]
+    fn save_then_read_round_trips() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("p.yaml");
+        let mut annotations = BTreeMap::new();
+        annotations.insert(
+            "a.png".to_string(),
+            Annotation {
+                severity: "minor".to_string(),
+                reason: "rotation".to_string(),
+            },
+        );
+        annotations.insert(
+            "sub/b.png".to_string(),
+            Annotation {
+                severity: "major".to_string(),
+                reason: "motion blur, severe".to_string(),
+            },
+        );
+        save_project(
+            s(&path),
+            "neil".to_string(),
+            "default".to_string(),
+            "/tmp/imgs".to_string(),
+            annotations,
+        )
+        .unwrap();
+
+        let loaded = read_project(s(&path)).unwrap().unwrap();
+        assert_eq!(loaded.reviewer, "neil");
+        assert_eq!(loaded.project, "default");
+        assert_eq!(loaded.image_dir, "/tmp/imgs");
+        assert_eq!(loaded.annotations.len(), 2);
+        assert_eq!(loaded.annotations["a.png"].severity, "minor");
+        assert_eq!(loaded.annotations["a.png"].reason, "rotation");
+        assert_eq!(loaded.annotations["sub/b.png"].severity, "major");
+        assert_eq!(loaded.annotations["sub/b.png"].reason, "motion blur, severe");
+    }
+}
