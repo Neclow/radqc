@@ -18,6 +18,14 @@ RadQC currently supports PNG and JPEG images. Support for DICOM or TIFF can be a
 
 Download the installer for your operating system from the [Releases page](https://github.com/Neclow/radqc/releases) and run it.
 
+The installers are not yet code-signed, so your operating system may warn you the first time you launch RadQC:
+
+- **macOS** — "RadQC cannot be opened because it is from an unidentified developer." Right-click the app in Finder, choose *Open*, then confirm.
+- **Windows** — Microsoft Defender SmartScreen may say "Windows protected your PC." Click *More info → Run anyway*.
+- **Linux** — `.AppImage` files may need to be marked executable (`chmod +x RadQC*.AppImage`) before they run.
+
+Code-signed releases are a planned improvement.
+
 ## Basic usage
 
 See the [tutorial](https://neclow.github.io/radqc/tutorial/) for a step-by-step walkthrough.

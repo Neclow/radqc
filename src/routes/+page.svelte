@@ -94,8 +94,15 @@
     }
   });
 
-  function buildProjectPath(imageFolder: string): string {
-    return `${imageFolder}/${project}_${reviewer}.radqc.yaml`;
+  function sanitizeSegment(s: string): string {
+    return s
+      .replace(/[/\\:*?"<>|\x00]+/g, "_")
+      .replace(/^\.+/, "")
+      .replace(/[. ]+$/, "");
+  }
+
+  function buildProjectPath(destFolder: string): string {
+    return `${destFolder}/${sanitizeSegment(project)}_${sanitizeSegment(reviewer)}.radqc.yaml`;
   }
 
   async function loadExistingProject(path: string) {
@@ -210,7 +217,7 @@
   async function changeOutputFolder() {
     const selected = await open({ directory: true, multiple: false });
     if (typeof selected !== "string") return;
-    projectPath = `${selected}/${project}_${reviewer}.radqc.yaml`;
+    projectPath = buildProjectPath(selected);
     pending = {};
     await loadExistingProject(projectPath);
   }
