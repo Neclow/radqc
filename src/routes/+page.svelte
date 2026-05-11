@@ -397,10 +397,7 @@
         <div class="landing-cards">
           <article class="landing-card">
             <h2>Create a new project</h2>
-            <p>
-              Start fresh: pick a reviewer ID, project name, image folder,
-              and output folder.
-            </p>
+            <p>Initialize a new annotation session.</p>
             <button class="primary" onclick={() => (mode = "new")}>
               Get started
             </button>
@@ -408,8 +405,8 @@
           <article class="landing-card">
             <h2>Open existing project</h2>
             <p>
-              Resume from a <code>.radqc.yaml</code> file you (or a
-              collaborator) created before.
+              Resume an annotation session from a previously saved
+              <code>.radqc.yaml</code> project file.
             </p>
             <button class="primary" onclick={openProject}>
               Open project…
