@@ -151,7 +151,7 @@
 
       let imgs: string[];
       try {
-        imgs = await invoke<string[]>("list_pngs", {
+        imgs = await invoke<string[]>("list_images", {
           folder: existing.image_dir,
         });
       } catch (e) {
@@ -198,7 +198,7 @@
     saved = {};
     pathFilter = "";
     try {
-      images = await invoke<string[]>("list_pngs", { folder: selected });
+      images = await invoke<string[]>("list_images", { folder: selected });
     } catch (e) {
       error = String(e);
       images = [];
@@ -463,10 +463,10 @@
             <span class="picker-info">
               {#if images.length === 0}
                 <span class="warn">
-                  No PNGs found — pick a different folder.
+                  No images found — pick a different folder.
                 </span>
               {:else}
-                {images.length} PNG{images.length === 1 ? "" : "s"} found
+                {images.length} image{images.length === 1 ? "" : "s"} found
               {/if}
             </span>
           {:else}

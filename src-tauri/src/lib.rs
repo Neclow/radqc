@@ -21,7 +21,7 @@ struct Annotation {
 }
 
 #[tauri::command]
-fn list_pngs(folder: String) -> Result<Vec<String>, String> {
+fn list_images(folder: String) -> Result<Vec<String>, String> {
     let root = PathBuf::from(&folder);
     if !root.is_dir() {
         return Err(format!("not a directory: {folder}"));
@@ -32,12 +32,15 @@ fn list_pngs(folder: String) -> Result<Vec<String>, String> {
         .filter_map(|entry| entry.ok())
         .filter(|entry| entry.file_type().is_file())
         .filter(|entry| {
-            entry
-                .path()
-                .extension()
-                .and_then(|ext| ext.to_str())
-                .map(|ext| ext.eq_ignore_ascii_case("png"))
-                .unwrap_or(false)
+            matches!(
+                entry
+                    .path()
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .map(|e| e.to_ascii_lowercase())
+                    .as_deref(),
+                Some("png" | "jpg" | "jpeg")
+            )
         })
         .filter_map(|entry| {
             entry
@@ -104,7 +107,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
-            list_pngs,
+            list_images,
             read_project,
             save_project
         ])
@@ -130,61 +133,62 @@ mod tests {
         p.to_string_lossy().to_string()
     }
 
-    // --- list_pngs ---
+    // --- list_images ---
 
     #[test]
-    fn list_pngs_empty_folder_is_empty() {
+    fn list_images_empty_folder_is_empty() {
         let dir = tempdir().unwrap();
-        let result = list_pngs(s(dir.path())).unwrap();
+        let result = list_images(s(dir.path())).unwrap();
         assert!(result.is_empty());
     }
 
     #[test]
-    fn list_pngs_finds_pngs_at_root() {
+    fn list_images_finds_pngs_at_root() {
         let dir = tempdir().unwrap();
         touch(&dir.path().join("a.png"));
         touch(&dir.path().join("b.png"));
-        let result = list_pngs(s(dir.path())).unwrap();
+        let result = list_images(s(dir.path())).unwrap();
         assert_eq!(result, vec!["a.png", "b.png"]);
     }
 
     #[test]
-    fn list_pngs_recursive() {
+    fn list_images_recursive() {
         let dir = tempdir().unwrap();
         touch(&dir.path().join("a.png"));
         touch(&dir.path().join("sub/b.png"));
         touch(&dir.path().join("sub/deeper/c.png"));
-        let result = list_pngs(s(dir.path())).unwrap();
+        let result = list_images(s(dir.path())).unwrap();
         assert_eq!(result, vec!["a.png", "sub/b.png", "sub/deeper/c.png"]);
     }
 
     #[test]
-    fn list_pngs_filters_non_png_files() {
+    fn list_images_filters_non_image_files() {
         let dir = tempdir().unwrap();
         touch(&dir.path().join("a.png"));
         touch(&dir.path().join("b.jpg"));
         touch(&dir.path().join("c.txt"));
         touch(&dir.path().join("d.csv"));
-        let result = list_pngs(s(dir.path())).unwrap();
-        assert_eq!(result, vec!["a.png"]);
+        let result = list_images(s(dir.path())).unwrap();
+        assert_eq!(result, vec!["a.png", "b.jpg"]);
     }
 
     #[test]
-    fn list_pngs_extension_is_case_insensitive() {
+    fn list_images_extension_is_case_insensitive() {
         let dir = tempdir().unwrap();
         touch(&dir.path().join("a.png"));
         touch(&dir.path().join("b.PNG"));
-        touch(&dir.path().join("c.Png"));
-        let result = list_pngs(s(dir.path())).unwrap();
-        assert_eq!(result, vec!["a.png", "b.PNG", "c.Png"]);
+        touch(&dir.path().join("c.Jpg"));
+        touch(&dir.path().join("d.JPEG"));
+        let result = list_images(s(dir.path())).unwrap();
+        assert_eq!(result, vec!["a.png", "b.PNG", "c.Jpg", "d.JPEG"]);
     }
 
     #[test]
-    fn list_pngs_errors_on_non_directory() {
+    fn list_images_errors_on_non_directory() {
         let dir = tempdir().unwrap();
         let file = dir.path().join("not-a-dir");
         fs::write(&file, b"").unwrap();
-        let result = list_pngs(s(&file));
+        let result = list_images(s(&file));
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("not a directory"));
     }
@@ -354,6 +358,9 @@ mod tests {
         assert_eq!(loaded.annotations["a.png"].severity, "minor");
         assert_eq!(loaded.annotations["a.png"].reason, "rotation");
         assert_eq!(loaded.annotations["sub/b.png"].severity, "major");
-        assert_eq!(loaded.annotations["sub/b.png"].reason, "motion blur, severe");
+        assert_eq!(
+            loaded.annotations["sub/b.png"].reason,
+            "motion blur, severe"
+        );
     }
 }
