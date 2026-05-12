@@ -18,6 +18,7 @@
   let project = $state("default");
   let folder = $state<string | null>(null);
   let projectPath = $state<string | null>(null);
+  // raw because images and saved are reassigned in bulk, never mutated in place
   let images = $state.raw<string[]>([]);
   let error = $state<string | null>(null);
   let notice = $state<string | null>(null);
@@ -65,6 +66,7 @@
       .map((p) => ({ path: p, ann: saved[p] })),
   );
 
+  // Seed pending only on first sighting of each path so unsaved edits survive pagination.
   $effect(() => {
     for (const path of visiblePaths) {
       if (pending[path] === undefined) {
@@ -89,6 +91,7 @@
     pageInput = String(currentPage + 1);
   });
 
+  // Clamp when filter/grid changes shrink totalPages below currentPage.
   $effect(() => {
     if (currentPage > totalPages - 1) {
       currentPage = Math.max(0, totalPages - 1);
