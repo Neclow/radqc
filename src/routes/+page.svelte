@@ -2,6 +2,7 @@
   import { invoke, convertFileSrc } from "@tauri-apps/api/core";
   import { open, confirm } from "@tauri-apps/plugin-dialog";
   import { openUrl } from "@tauri-apps/plugin-opener";
+  import { sanitizeSegment } from "$lib/sanitize";
 
   type Severity = "" | "minor" | "major";
   type FormState = { severity: Severity; reason: string };
@@ -17,7 +18,7 @@
   let project = $state("default");
   let folder = $state<string | null>(null);
   let projectPath = $state<string | null>(null);
-  let images = $state<string[]>([]);
+  let images = $state.raw<string[]>([]);
   let error = $state<string | null>(null);
   let notice = $state<string | null>(null);
   let started = $state(false);
@@ -32,7 +33,7 @@
   let showSummary = $state(false);
 
   let pending = $state<Record<string, FormState>>({});
-  let saved = $state<Record<string, FormState>>({});
+  let saved = $state.raw<Record<string, FormState>>({});
   let pageInput = $state("1");
 
   let filteredImages = $derived.by(() => {
@@ -93,13 +94,6 @@
       currentPage = Math.max(0, totalPages - 1);
     }
   });
-
-  function sanitizeSegment(s: string): string {
-    return s
-      .replace(/[/\\:*?"<>|\x00]+/g, "_")
-      .replace(/^\.+/, "")
-      .replace(/[. ]+$/, "");
-  }
 
   function buildProjectPath(destFolder: string): string {
     return `${destFolder}/${sanitizeSegment(project)}_${sanitizeSegment(reviewer)}.radqc.yaml`;
@@ -369,8 +363,7 @@
       <div class="theme-toggle" role="group" aria-label="Theme">
         {#each ["auto", "light", "dark"] as t (t)}
           <button
-            class="seg"
-            class:active={theme === t}
+            class={["seg", { active: theme === t }]}
             onclick={() => (theme = t as ThemeMode)}
           >
             {t[0].toUpperCase() + t.slice(1)}
@@ -556,8 +549,7 @@
         <div class="seg-group">
           {#each [["all", "All"], ["flagged", "Flagged"], ["unflagged", "Unflagged"]] as [f, label] (f)}
             <button
-              class="seg"
-              class:active={filter === f}
+              class={["seg", { active: filter === f }]}
               onclick={() => (filter = f as Filter)}
             >
               {label}
@@ -568,8 +560,7 @@
         <div class="seg-group">
           {#each [1, 2, 4, 8] as n (n)}
             <button
-              class="seg"
-              class:active={gridSize === n}
+              class={["seg", { active: gridSize === n }]}
               onclick={() => setGridSize(n as GridSize)}
             >
               {n}
@@ -603,18 +594,17 @@
 
     <div
       class="grid"
-      style="grid-template-columns: repeat({gridColumns}, minmax(0, 1fr));"
+      style:grid-template-columns="repeat({gridColumns}, minmax(0, 1fr))"
     >
       {#each visiblePaths as path (path)}
         <article class="cell">
           <div
-            class="cell-image"
-            class:scroll={gridSize === 1 && originalSize}
+            class={["cell-image", { scroll: gridSize === 1 && originalSize }]}
           >
             <img
               src={imageUrl(path)}
               alt={path}
-              class:og={gridSize === 1 && originalSize}
+              class={{ og: gridSize === 1 && originalSize }}
             />
           </div>
           <p class="cell-path"><code>{path}</code></p>
@@ -659,7 +649,7 @@
                   bind:value={pending[path].reason}
                   rows="2"
                   placeholder="describe the quality issue"
-                  class:invalid={!pending[path].reason.trim()}
+                  class={{ invalid: !pending[path].reason.trim() }}
                 ></textarea>
               </label>
             {/if}
